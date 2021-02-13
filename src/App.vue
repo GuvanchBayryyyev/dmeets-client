@@ -18,10 +18,9 @@ export default {
     };
   },
   mounted() {
-    console.log("dwa");
-    axios
-      .get("http://localhost:3030")
-      .then((response) => (this.roomId = response.data.roomId));
+    // axios
+    //   .get("http://localhost:3030")
+    //   .then((response) => (this.roomId = response.data.roomId));
   },
 };
 </script>

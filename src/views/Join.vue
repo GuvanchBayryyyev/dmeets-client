@@ -15,7 +15,7 @@ export default {
   name: "Home",
   data() {
     return {
-      username: "",
+      username: "guvanch",
       roomId: "",
     };
   },
@@ -25,7 +25,8 @@ export default {
   methods: {
     join() {
       this.$router.push({
-        path: `/room/${this.roomId}/${this.username}`,
+        name: "room",
+        params: { roomId: this.roomId, username: this.username },
       });
     },
   },

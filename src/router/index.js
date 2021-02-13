@@ -17,7 +17,7 @@ const routes = [
     component: Join,
   },
   {
-    path: "/room/:roomId/:username",
+    path: "/:roomId",
     name: "room",
     component: Room,
     // route level code-splitting
