@@ -6,8 +6,8 @@
         <h3>I am {{role}}</h3>
         <div>
           <h4>Videos: {{videos.length}}</h4>
-          <h4>Peers: {{peers.length}}</h4>
-          <h4>Socket Connected: {{connected}}</h4>
+          <h4>Peer Connected: {{peerConnected}}</h4>
+          <h4>Socket Connected: {{socketConnected}}</h4>
           <h4>My Video</h4>
           <h4>Count: {{count}}</h4>
           <button @click="print">Print</button>
@@ -74,20 +74,22 @@ export default {
     roomId() {
       return this.$route.params.roomId;
     },
-    connected() {
+    socketConnected() {
       return this.socket.connected
     },
+
     role() {
       return this.$route.params.role
     },
+
   },
   mounted() {
   this.goLive();
 
   },
   created() {
-    this.socket = io('http://localhost:3030'); // correct on localhost
-    // this.socket = io('https://dmeets-api.herokuapp.com');
+    // this.socket = io('http://localhost:3030'); // correct on localhost
+    this.socket = io('https://dmeets-api.herokuapp.com');
   },
 
   methods: {
@@ -152,6 +154,7 @@ export default {
             });
           });
         this.$peer.on("open", id => {
+          this.peerConnected = this.$peer.open
           this.socket.emit("join-room", this.roomId, id);
         });
         this.socket.on("user-disconnected", userId => {

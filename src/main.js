@@ -9,7 +9,7 @@ Vue.use(
   VuePeerJS,
   new Peer({
     // host: "dmeets-api.herokuapp.com",
-    host: 'localhost',
+    host: '127.0.0.1',
     path: '/',
     port: 9000,
     // key: 'peerjs'
