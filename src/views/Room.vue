@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <div class="row">
-      <div class="col-md-12 my-3" style="borderWidth:1px;padding: 10px; backgroundColor: red">
+      <div class="col-md-12 my-3" style="borderWidth:1px;padding: 10px;">
         <h2>Room: {{roomId}}</h2>
         <h3>I am {{role}}</h3>
         <div>
@@ -12,9 +12,12 @@
           <h4>Count: {{count}}</h4>
           <button @click="print">Print</button>
           <div class="video-list">
+          <div>
           <button @click="toggleMute">{{myVoice ? 'Mute Voice' : 'Unmute Voice'}}</button>
           <button @click="toggleVideo">{{myScreen ? 'Mute Video' : 'Unmute Video'}}</button>
           <button @click="shareScreen">{{sharing ? 'Stop Sharing' : 'Share Screen'}}</button>
+          </div>
+
             <video ref="myVideo" height="200px" userId="userid" />
           </div>
         </div>
@@ -101,28 +104,53 @@ export default {
     toggleVideo(){
      this.$refs.myVideo.srcObject.getVideoTracks()[0].enabled = !this.$refs.myVideo.srcObject.getVideoTracks()[0].enabled
      this.myScreen = this.$refs.myVideo.srcObject.getVideoTracks()[0].enabled
+     console.log(this.$refs.myVideo.srcObject.getVideoTracks()[0].enabled)
     },
     shareScreen(){
       if(!this.sharing){
-        if(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia){
-        navigator.mediaDevices.getDisplayMedia().then(stream => {
-          this.addMyVideoStream('user id', stream);
-          this.sharing = true
-          stream.oninactive = () => {
-            this.addMyVideoStream('user id', this.stream);
-            this.sharing = false
-          }
-           this.connectToNewUser('user', stream);
-        })
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices
+          .getDisplayMedia({
+          })
+          .then(stream => {
+            this.stream = stream
+            this.addMyVideoStream("username", stream);
+            this.$peer.on("call", call => {
+              call.answer(stream);
+              let count = 0
+              call.on("stream", userVideoStream => {
+                count = count + 1
+                if(count == 2) {
+                  return
+                } else {
+                this.addVideoStream(this.username, userVideoStream);
+                }
+              });
+            });
+            this.socket.on('connect', () => {
+            })
+            this.socket.on("user-connected", userId => {
+              console.log("user connected: " + userId + 1);
+              this.connectToNewUser(userId, stream);
+            });
+          });
+        this.$peer.on("open", id => {
+          this.peerConnected = this.$peer.open
+          this.socket.emit("join-room", this.roomId, id);
+        });
+        this.socket.on("user-disconnected", userId => {
+          console.log("user Disconnected: " + userId);
+          if (this.peers[userId]) this.peers[userId].close();
+        });
+
       }
       }else {
-        this.addMyVideoStream('user id', this.stream);
-        this.sharing = false
+        // this.addMyVideoStream('user id', this.stream);
+        // this.sharing = false
       }
     },
     print() {
       console.log(this.videos);
-      console.log(this.stream)
     },
     goLive() {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -149,7 +177,7 @@ export default {
             this.socket.on('connect', () => {
             })
             this.socket.on("user-connected", userId => {
-              console.log("user connected: " + userId);
+              console.log("user connected: " + userId + 1);
               this.connectToNewUser(userId, stream);
             });
           });
