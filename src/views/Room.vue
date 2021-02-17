@@ -15,7 +15,7 @@
           <div>
           <button @click="toggleMute">{{myVoice ? 'Mute Voice' : 'Unmute Voice'}}</button>
           <button @click="toggleVideo">{{myScreen ? 'Mute Video' : 'Unmute Video'}}</button>
-          <button @click="shareScreen">{{sharing ? 'Stop Sharing' : 'Share Screen'}}</button>
+          <button @click="share">{{sharing ? 'Stop Sharing' : 'Share Screen'}}</button>
           </div>
 
             <video ref="myVideo" height="200px" userId="userid" />
@@ -67,6 +67,7 @@ export default {
       sharing: false,
       username: "",
       users: [],
+      myUserId: null,
     }
   },
   components: {
@@ -87,8 +88,8 @@ export default {
 
   },
   mounted() {
-  this.goLive();
-
+  this.initialize()
+  this.joinWithVideo();
   },
   created() {
     // this.socket = io('http://localhost:3030'); // correct on localhost
@@ -104,55 +105,46 @@ export default {
     toggleVideo(){
      this.$refs.myVideo.srcObject.getVideoTracks()[0].enabled = !this.$refs.myVideo.srcObject.getVideoTracks()[0].enabled
      this.myScreen = this.$refs.myVideo.srcObject.getVideoTracks()[0].enabled
-     console.log(this.$refs.myVideo.srcObject.getVideoTracks()[0].enabled)
     },
-    shareScreen(){
-      if(!this.sharing){
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices
-          .getDisplayMedia({
-          })
-          .then(stream => {
-            this.stream = stream
-            this.addMyVideoStream("username", stream);
-            this.$peer.on("call", call => {
-              call.answer(stream);
-              let count = 0
-              call.on("stream", userVideoStream => {
-                count = count + 1
-                if(count == 2) {
-                  return
-                } else {
-                this.addVideoStream(this.username, userVideoStream);
-                }
-              });
-            });
-            this.socket.on('connect', () => {
-            })
-            this.socket.on("user-connected", userId => {
-              console.log("user connected: " + userId + 1);
-              this.connectToNewUser(userId, stream);
-            });
-          });
-        this.$peer.on("open", id => {
-          this.peerConnected = this.$peer.open
-          this.socket.emit("join-room", this.roomId, id);
-        });
-        this.socket.on("user-disconnected", userId => {
-          console.log("user Disconnected: " + userId);
-          if (this.peers[userId]) this.peers[userId].close();
-        });
-
-      }
+    share() {
+      if(this.sharing) {
+        this.joinWithVideo()
       }else {
-        // this.addMyVideoStream('user id', this.stream);
-        // this.sharing = false
+        this.joinWithScreen()
       }
     },
     print() {
       console.log(this.videos);
     },
-    goLive() {
+    initialize(){
+      this.$peer.on("call", call => {
+        call.answer(this.stream);
+        let count = 0
+        call.on("stream", userVideoStream => {
+          count = count + 1
+          if(count == 2) {
+            return
+          } else {
+          this.addVideoStream(this.username, userVideoStream);
+          }
+        });
+      });
+      this.socket.on('connect', () => {
+      })
+      this.socket.on("user-connected", userId => {
+        console.log("user connected: " + userId);
+        this.connectToNewUser(userId, this.stream);
+      });
+      this.$peer.on("open", id => {
+        this.peerConnected = this.$peer.open
+        this.socket.emit("join-room", this.roomId, id);
+      });
+      this.socket.on("user-disconnected", userId => {
+        console.log("user Disconnected: " + userId);
+        if (this.peers[userId]) this.peers[userId].close();
+      });
+    },
+    joinWithVideo() {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         navigator.mediaDevices
           .getUserMedia({
@@ -160,35 +152,29 @@ export default {
             audio: true
           })
           .then(stream => {
+            this.sharing = false
             this.stream = stream
             this.addMyVideoStream("username", stream);
-            this.$peer.on("call", call => {
-              call.answer(stream);
-              let count = 0
-              call.on("stream", userVideoStream => {
-                count = count + 1
-                if(count == 2) {
-                  return
-                } else {
-                this.addVideoStream(this.username, userVideoStream);
-                }
-              });
-            });
-            this.socket.on('connect', () => {
-            })
-            this.socket.on("user-connected", userId => {
-              console.log("user connected: " + userId + 1);
-              this.connectToNewUser(userId, stream);
-            });
+            console.log(this.stream)
           });
-        this.$peer.on("open", id => {
-          this.peerConnected = this.$peer.open
-          this.socket.emit("join-room", this.roomId, id);
-        });
-        this.socket.on("user-disconnected", userId => {
-          console.log("user Disconnected: " + userId);
-          if (this.peers[userId]) this.peers[userId].close();
-        });
+      }
+    },
+    joinWithScreen() {
+      if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        navigator.mediaDevices.getDisplayMedia({video: {
+          cursor: "always"
+        }, audio: {echoCancellation: true, noiseSuppression: true}}).then(stream => {
+            this.sharing = true
+            this.stream = stream
+            this.addMyVideoStream("username", stream);
+            let videoTrack = stream.getVideoTracks()[0]
+            console.log(this.$peer.connections)
+            stream.oninactive = () => {
+              this.sharing = false
+              this.joinWithVideo
+              this.joinWithVideo()
+            }
+          });
       }
     },
     connectToNewUser(userId, stream ) {
@@ -215,7 +201,7 @@ export default {
       video.userId = userId;
       this.videos.push(video);
     },
-    addMyVideoStream(username, stream) {
+    async addMyVideoStream(username, stream) {
       this.$refs.myVideo.srcObject = stream;
       this.$refs.myVideo.src = stream;
       this.$refs.myVideo.muted = true;
